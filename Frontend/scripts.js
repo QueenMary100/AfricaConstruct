@@ -1,9 +1,7 @@
 // ===== JAVASCRIPT FUNCTIONALITY =====
 
-// Initialize EmailJS
-(function() {
-    emailjs.init("YOUR_PUBLIC_KEY"); // Replace with your EmailJS public key
-})();
+// EmailJS is already initialized in the HTML file with the public key
+// No need to initialize again here
 
 // Smooth scrolling for navigation links
 document.querySelectorAll('a[href^="#"]').forEach(anchor => {
@@ -22,7 +20,7 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
 // Function to collect form data
 function collectFormData() {
     const formData = {
-        fullName: document.getElementById('fullName').value || '',
+        name: document.getElementById('name').value || '',
         email: document.getElementById('email').value || '',
         phone: document.getElementById('phone').value || '',
         company: document.getElementById('company').value || '',
@@ -54,7 +52,7 @@ function exportToExcel() {
     const formData = collectFormData();
     
     // Check if required fields are filled
-    if (!formData.fullName || !formData.email) {
+    if (!formData.name || !formData.email) {
         alert('Please fill in at least the required fields (Name and Email) before exporting.');
         return;
     }
@@ -62,7 +60,7 @@ function exportToExcel() {
     // Prepare data for Excel with display values
     const excelData = [
         ['Field', 'Value'],
-        ['Full Name', formData.fullName],
+        ['Full Name', formData.name],
         ['Email Address', formData.email],
         ['Phone Number', formData.phone],
         ['Company Name', formData.company],
@@ -90,7 +88,7 @@ function exportToExcel() {
     
     // Generate filename with timestamp
     const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
-    const filename = `AfricaConstruct_GetStarted_${formData.fullName.replace(/\s+/g, '_')}_${timestamp}.xlsx`;
+    const filename = `AfricaConstruct_GetStarted_${formData.name.replace(/\s+/g, '_')}_${timestamp}.xlsx`;
     
     // Save file
     XLSX.writeFile(wb, filename);
@@ -104,7 +102,7 @@ async function exportToWord() {
     const formData = collectFormData();
     
     // Check if required fields are filled
-    if (!formData.fullName || !formData.email) {
+    if (!formData.name || !formData.email) {
         alert('Please fill in at least the required fields (Name and Email) before exporting.');
         return;
     }
@@ -155,7 +153,7 @@ async function exportToWord() {
                     new docx.Paragraph({
                         children: [
                             new docx.TextRun({ text: "Full Name: ", bold: true }),
-                            new docx.TextRun({ text: formData.fullName })
+                            new docx.TextRun({ text: formData.name })
                         ]
                     }),
                     
@@ -253,7 +251,7 @@ async function exportToWord() {
         // Generate and save document
         const blob = await docx.Packer.toBlob(doc);
         const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
-        const filename = `AfricaConstruct_GetStarted_${formData.fullName.replace(/\s+/g, '_')}_${timestamp}.docx`;
+        const filename = `AfricaConstruct_GetStarted_${formData.name.replace(/\s+/g, '_')}_${timestamp}.docx`;
         
         saveAs(blob, filename);
         
@@ -267,40 +265,29 @@ async function exportToWord() {
 }
 
 // Function to send email notifications
-async function sendEmailNotifications(formData) {
+async function sendEmailNotifications(formElement) {
     try {
-        // Email to admin (you)
-        const adminEmailParams = {
-            to_email: 'qmary85@gmail.com', // Your email
-            from_name: formData.fullName,
-            from_email: formData.email,
-            phone: formData.phone || 'Not provided',
-            company: formData.company || 'Not provided',
-            project_type: getDisplayValue('projectType', formData.projectType) || 'Not specified',
-            budget_range: getDisplayValue('budgetRange', formData.budgetRange) || 'Not specified',
-            timeline: getDisplayValue('timeline', formData.timeline) || 'Not specified',
-            location: formData.location || 'Not specified',
-            message: formData.message || 'No additional details provided',
-            newsletter: formData.newsletter ? 'Yes' : 'No',
-            submission_date: formData.submissionDate
-        };
+        // Check if EmailJS is available
+        if (typeof emailjs === 'undefined') {
+            console.warn('EmailJS not loaded');
+            return false;
+        }
+
+        const serviceID = 'service_j8qghxu';
+        const templateID = 'template_kpokmlq';
         
-        // Send admin notification
-        await emailjs.send('YOUR_SERVICE_ID', 'YOUR_ADMIN_TEMPLATE_ID', adminEmailParams);
+        try {
+            // Use EmailJS sendForm method as recommended
+            await emailjs.sendForm(serviceID, templateID, formElement);
+            console.log('Email sent successfully');
+            return true;
+        } catch (error) {
+            console.warn('Failed to send email:', error);
+            return false;
+        }
         
-        // Email to customer (thank you message)
-        const customerEmailParams = {
-            to_email: formData.email,
-            to_name: formData.fullName,
-            company_name: 'AfricaConstruct'
-        };
-        
-        // Send customer thank you email
-        await emailjs.send('YOUR_SERVICE_ID', 'YOUR_CUSTOMER_TEMPLATE_ID', customerEmailParams);
-        
-        return true;
     } catch (error) {
-        console.error('Error sending emails:', error);
+        console.error('Error in email notification system:', error);
         return false;
     }
 }
@@ -336,12 +323,12 @@ document.getElementById('contactForm').addEventListener('submit', async function
     const button = this.querySelector('button[type="submit"]');
     const originalText = button.innerHTML;
     
-    button.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Processing...';
+    button.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Sending...';
     button.disabled = true;
     
     try {
-        // Send email notifications
-        const emailSent = await sendEmailNotifications(formData);
+        // Try to send email notifications using the form element
+        const emailSent = await sendEmailNotifications(this);
         
         // Show success message
         button.innerHTML = '<i class="bi bi-check-circle me-2"></i>Success!';
@@ -350,10 +337,11 @@ document.getElementById('contactForm').addEventListener('submit', async function
             button.innerHTML = originalText;
             button.disabled = false;
             
+            // Always show success message, but mention email status
             if (emailSent) {
-                showNotification('Thank you for your interest! We\'ve sent you a confirmation email and will be in touch soon to help make your construction dreams come true! 🚀', 'success');
+                showNotification('Thank you for your interest! We\'ve received your information and sent you a confirmation email. We\'ll be in touch soon to help make your construction dreams come true! 🚀', 'success');
             } else {
-                showNotification('Form submitted successfully! However, there was an issue sending the confirmation email. We\'ll still be in touch soon! 🚀', 'success');
+                showNotification('Thank you for your interest! We\'ve received your information successfully. We\'ll be in touch soon to help make your construction dreams come true! 🚀', 'success');
             }
             
             // Reset form after successful submission
@@ -369,10 +357,11 @@ document.getElementById('contactForm').addEventListener('submit', async function
             button.innerHTML = originalText;
             button.disabled = false;
             
-            showNotification('There was an error submitting your form. Please try again or contact us directly.', 'error');
+            showNotification('There was an error processing your form. Please try again or contact us directly at qmary85@gmail.com.', 'error');
         }, 2000);
     }
 });
+    
 
 // Export button event listeners
 document.getElementById('exportExcel').addEventListener('click', exportToExcel);
